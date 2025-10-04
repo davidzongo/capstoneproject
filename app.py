@@ -9,10 +9,26 @@ from PyPDF2 import PdfReader
 # CONFIGURE GEMINI
 # ---------------------------
 import getpass
-#APIKEY = getpass.getpass("Enter your Google API Key: ")
-#genai.configure(api_key=APIKEY)
 
-genai.configure(api_key="AIzaSyBlgCJtLIQQhl7jCamTMGL7TuFHN_tM7GA")
+# Secure API key handling for deployment
+try:
+    # Try to get API key from Streamlit secrets (for Streamlit Cloud)
+    api_key = st.secrets["GEMINI_API_KEY"]
+except (KeyError, FileNotFoundError):
+    try:
+        # Try to get from environment variables (for local development)
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("API key not found")
+    except:
+        # Fallback: ask user to input API key
+        api_key = st.text_input("Enter your Gemini API Key:", type="password", help="Get your API key from https://makersuite.google.com/app/apikey")
+        if not api_key:
+            st.error("⚠️ Please enter your Gemini API key to use the translator.")
+            st.stop()
+
+if api_key:
+    genai.configure(api_key=api_key)
 
 # Use the correct model names from the API
 # The issue was that we need to include "models/" prefix
