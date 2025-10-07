@@ -10,22 +10,40 @@ from PyPDF2 import PdfReader
 # ---------------------------
 import getpass
 
-# Secure API key handling for deployment
-try:
-    # Try to get API key from Streamlit secrets (for Streamlit Cloud)
-    api_key = st.secrets["GEMINI_API_KEY"]
-except (KeyError, FileNotFoundError):
+# Initialize session state for the API key if it doesn't exist
+if 'GEMINI_API_KEY' not in st.session_state:
+    st.session_state.GEMINI_API_KEY = None
+
+api_key = st.session_state.GEMINI_API_KEY
+
+# 1. Try to load the key from secure sources first (only run once if successful)
+if not api_key:
     try:
-        # Try to get from environment variables (for local development)
+        # Try to get API key from Streamlit secrets
+        api_key = st.secrets["GEMINI_API_KEY"]
+    except KeyError:
+        # Try to get from environment variables
         api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("API key not found")
-    except:
-        # Fallback: ask user to input API key
-        api_key = st.text_input("Enter your Gemini API Key:", type="password", help="Get your API key from https://makersuite.google.com/app/apikey")
-        if not api_key:
-            st.error("⚠️ Please enter your Gemini API key to use the translator.")
-            st.stop()
+
+# 2. Fallback to text input
+if not api_key:
+    # Use a placeholder in the text input, but retrieve the value on every run
+    input_key = st.text_input(
+        "Enter your Gemini API Key:", 
+        type="password", 
+        value=st.session_state.GEMINI_API_KEY or "", # Pre-fill if key is stored
+        help="Get your API key from Google AI Studio."
+    )
+    
+    if input_key:
+        # Key entered in the text box is considered valid for this run
+        api_key = input_key
+        st.session_state.GEMINI_API_KEY = api_key # **Crucial: Store key in session state**
+        # Rerun to ensure key is picked up and configuration happens before model loop
+        st.rerun() 
+    elif not st.session_state.GEMINI_API_KEY:
+        st.error("⚠️ Please enter your Gemini API key to use the translator.")
+        st.stop()
 
 if api_key:
     genai.configure(api_key=api_key)
