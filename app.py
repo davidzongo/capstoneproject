@@ -1,5 +1,11 @@
 import streamlit as st
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+    GENAI_AVAILABLE = True
+    genai_import_error = None
+except Exception as e:
+    GENAI_AVAILABLE = False
+    genai_import_error = e
 from gtts import gTTS
 import os
 import pandas as pd
@@ -46,7 +52,32 @@ if not api_key:
         st.stop()
 
 if api_key:
-    genai.configure(api_key=api_key)
+    if GENAI_AVAILABLE:
+        try:
+            genai.configure(api_key=api_key)
+        except Exception as e:
+            st.error(f"❌ Failed to configure Gemini client: {e}")
+    else:
+        # Show a clear message and stop to avoid the redacted ModuleNotFoundError in Streamlit logs
+        st.error("❌ The Python package `google-generativeai` is not available in the environment.")
+        st.markdown(
+            """
+            Possible fixes:
+
+            - Ensure `google-generativeai` is present in `requirements.txt` and that your Streamlit Cloud build succeeded installing it.
+            - Add a `runtime.txt` with `python-3.10` if the package needs an older Python runtime.
+            - Check the deployment logs for pip install errors (click Manage app → Logs).
+
+            For local testing, install the package into your virtual environment:
+
+            ```powershell
+            pip install google-generativeai
+            ```
+            """
+        )
+        if genai_import_error:
+            st.info(f"Import error: {genai_import_error}")
+        st.stop()
 
 # Use the correct model names from the API
 # The issue was that we need to include "models/" prefix
